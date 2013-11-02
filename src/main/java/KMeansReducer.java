@@ -7,61 +7,64 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Reducer;
 
 
-// calculate a new clustercenter for these vertices
-public class KMeansReducer extends
-		Reducer<Cluster, Writable, Cluster, Writable> {
+// calculate a new Vector for these vertices
+@SuppressWarnings("deprecation")
+public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
 
-	public static enum Counter {
-		CONVERGED
-	}
+    public static enum Counter {
+        CONVERGED
+    }
 
-	private final List<double[]> centers = new ArrayList<>();
+    private final List<Vector> centers = new ArrayList();
 
-	@Override
-	protected void reduce(Cluster key, Iterable<Writable> values,
-			Context context) throws IOException, InterruptedException {
+    @Override
+    protected void reduce(Vector key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
 
-		List<Writable> vectorList = new ArrayList<>();
-		double[] newCenter = null;
-		for (Writable value : values) {
-			vectorList.add(new IntWritable(0));
-			if (newCenter == null)
-				newCenter = null;
-			else
-//				newCenter = newCenter.add(value.readFields(null));
-		}
+        Vector newCenter = new Vector();
+        List<Vector> vectorList = new ArrayList();
+        int vectorSize = key.getVector().length;
+        newCenter.setVector(new double[vectorSize]);
+        for (Vector value : values) {
+            vectorList.add(new Vector(value));
+            for (int i = 0; i < value.getVector().length; i++) {
+                newCenter.getVector()[i] += value.getVector()[i];
+            }
+        }
 
-		newCenter = newCenter.divide(vectorList.size());
-		ClusterCenter center = new ClusterCenter(newCenter);
-		centers.add(center);
-		for (VectorWritable vector : vectorList) {
-			context.write(center, vector);
-		}
+        for (int i = 0; i < newCenter.getVector().length; i++) {
+            newCenter.getVector()[i] = newCenter.getVector()[i] / vectorList.size();
+        }
 
-		if (center.converged(key))
-			context.getCounter(Counter.CONVERGED).increment(1);
+        Vector center = new Vector(newCenter);
+        centers.add(center);
+        for (Vector vector : vectorList) {
+            context.write(center, vector);
+        }
 
-	}
+//        if (center.converged(key))
+//            context.getCounter(Counter.CONVERGED).increment(1);
 
-	@Override
-	protected void cleanup(Context context) throws IOException,
-			InterruptedException {
-		super.cleanup(context);
-		Configuration conf = context.getConfiguration();
-		Path outPath = new Path(conf.get("centroid.path"));
-		FileSystem fs = FileSystem.get(conf);
-		fs.delete(outPath, true);
-		try (SequenceFile.Writer out = SequenceFile.createWriter(fs,
-				context.getConfiguration(), outPath, ClusterCenter.class,
-				IntWritable.class)) {
-			final IntWritable value = new IntWritable(0);
-			for (double[] center : centers) {
-				out.append(center, value);
-			}
-		}
-	}
+    }
+
+    protected void cleanup(Context context) throws IOException, InterruptedException {
+        super.cleanup(context);
+        Configuration conf = context.getConfiguration();
+        Path outPath = new Path(conf.get("centroid.path"));
+        FileSystem fs = FileSystem.get(conf);
+        fs.delete(outPath, true);
+        try {SequenceFile.Writer out = SequenceFile.createWriter(fs,
+                context.getConfiguration(), outPath, Vector.class,
+                IntWritable.class);
+            final IntWritable value = new IntWritable(0);
+            for (Vector center : centers) {
+                out.append(center, value);
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 }
