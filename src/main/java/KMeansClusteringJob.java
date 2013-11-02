@@ -67,7 +67,7 @@ public class KMeansClusteringJob {
 
         long counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
         iteration++;
-        while (counter > 0 && iteration<5) {
+        while (counter > 0 && iteration < 5) {
             conf = new Configuration();
             conf.set("centroid.path", center.toString());
             conf.set("num.iteration", iteration + "");
@@ -112,8 +112,7 @@ public class KMeansClusteringJob {
                         while (reader.next(key, v)) {
                             LOG.info(key + " / " + v);
                         }
-                    }
-                    catch (Exception e){
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
@@ -125,15 +124,14 @@ public class KMeansClusteringJob {
                                            FileSystem fs) throws IOException {
         try {
             SequenceFile.Writer dataWriter = SequenceFile.createWriter(fs, conf, in, Vector.class, Vector.class);
-            for (int i=0;i<1000;i++){
+            for (int i = 0; i < 1000; i++) {
                 double[] random = new double[10];
-                for (int j=0;j<random.length;j++) {
-                    random[j] = 0 + (int) (Math.random() * (100 + 1));
+                for (int j = 0; j < random.length; j++) {
+                    random[j] = (int) (Math.random() * (100 + 1));
                 }
-                dataWriter.append(new Vector(new double[]{0,0,0,0,0,0,0,0,0,0}), new Vector(random));
+                dataWriter.append(new Vector(new double[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), new Vector(random));
             }
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -144,15 +142,14 @@ public class KMeansClusteringJob {
             SequenceFile.Writer centerWriter = SequenceFile.createWriter(fs, conf, center, Vector.class, IntWritable.class);
 
             final IntWritable value = new IntWritable(0);
-            for (int i=0;i<10;i++){
+            for (int i = 0; i < 10; i++) {
                 double[] random = new double[10];
-                for (int j=0;j<random.length;j++) {
-                    random[j] = 0 + (int) (Math.random() * (100 + 1));
+                for (int j = 0; j < random.length; j++) {
+                    random[j] = (int) (Math.random() * (100 + 1));
                 }
                 centerWriter.append(new Vector(random), value);
             }
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

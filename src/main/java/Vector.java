@@ -37,8 +37,7 @@ public final class Vector implements WritableComparable<Vector> {
 
     public void write(DataOutput out) throws IOException {
         out.writeInt(vector.length);
-        for (int i = 0; i < vector.length; i++)
-            out.writeDouble(vector[i]);
+        for (double aVector : vector) out.writeDouble(aVector);
     }
 
     public void readFields(DataInput in) throws IOException {

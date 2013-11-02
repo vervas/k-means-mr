@@ -27,16 +27,15 @@ public class KMeansMapper extends
 
         try {
             SequenceFile.Reader reader = new SequenceFile.Reader(fs, centroids, conf);
-                Vector key = new Vector();
-                IntWritable value = new IntWritable();
-                while (reader.next(key, value)) {
-                    Vector clusterCenter = new Vector(key);
-                    centers.add(clusterCenter);
-                }
+            Vector key = new Vector();
+            IntWritable value = new IntWritable();
+            while (reader.next(key, value)) {
+                Vector clusterCenter = new Vector(key);
+                centers.add(clusterCenter);
+            }
 
-        }
-        catch (Exception e){
-                          e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

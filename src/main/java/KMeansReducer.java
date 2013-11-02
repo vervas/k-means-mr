@@ -55,15 +55,15 @@ public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
         Path outPath = new Path(conf.get("centroid.path"));
         FileSystem fs = FileSystem.get(conf);
         fs.delete(outPath, true);
-        try {SequenceFile.Writer out = SequenceFile.createWriter(fs,
-                context.getConfiguration(), outPath, Vector.class,
-                IntWritable.class);
+        try {
+            SequenceFile.Writer out = SequenceFile.createWriter(fs,
+                    context.getConfiguration(), outPath, Vector.class,
+                    IntWritable.class);
             final IntWritable value = new IntWritable(0);
             for (Vector center : centers) {
                 out.append(center, value);
             }
-        }
-        catch (Exception e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
