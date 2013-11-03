@@ -67,7 +67,7 @@ public class KMeansClusteringJob {
 
         long counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
         iteration++;
-        while (counter > 0 && iteration < 5) {
+       // while (counter > 0 && iteration < 5) {
             conf = new Configuration();
             conf.set("centroid.path", center.toString());
             conf.set("num.iteration", iteration + "");
@@ -95,7 +95,7 @@ public class KMeansClusteringJob {
             iteration++;
             counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED)
                     .getValue();
-        }
+       // }
 
         Path result = new Path("/clustering/depth_" + (iteration - 1) + "/");
 
