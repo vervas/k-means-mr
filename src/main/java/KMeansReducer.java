@@ -44,8 +44,9 @@ public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
             context.write(center, vector);
         }
 
-//        if (center.converged(key))
-//            context.getCounter(Counter.CONVERGED).increment(1);
+        final double CONV_FACTOR = 10L;          // Convergence factor (random atm)
+        if (center.measureDistance(newCenter.getVector())<CONV_FACTOR)
+            context.getCounter(Counter.CONVERGED).increment(1);
 
     }
 
