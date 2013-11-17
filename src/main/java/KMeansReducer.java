@@ -7,6 +7,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.io.SequenceFile.Writer;
 import org.apache.hadoop.mapreduce.Reducer;
 
 
@@ -22,7 +23,6 @@ public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
 
     @Override
     protected void reduce(Vector key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
-
         Vector newCenter = new Vector();
         List<Vector> vectorList = new ArrayList();
         int vectorSize = key.getVector().length;
@@ -57,9 +57,8 @@ public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
         FileSystem fs = FileSystem.get(conf);
         fs.delete(outPath, true);
         try {
-            SequenceFile.Writer out = SequenceFile.createWriter(fs,
-                    context.getConfiguration(), outPath, Vector.class,
-                    IntWritable.class);
+            SequenceFile.Writer out = SequenceFile.createWriter(context.getConfiguration(),  Writer.file(outPath),
+                    Writer.keyClass(Vector.class),  Writer.keyClass(IntWritable.class));
             final IntWritable value = new IntWritable(0);
             for (Vector center : centers) {
                 out.append(center, value);
