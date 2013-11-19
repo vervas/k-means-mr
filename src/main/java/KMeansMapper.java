@@ -29,7 +29,7 @@ public class KMeansMapper extends Mapper<Vector, Vector, Vector, Vector> {
                 Vector clusterCenter = new Vector(key);
                 centers.add(clusterCenter);
             }
-
+            reader.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

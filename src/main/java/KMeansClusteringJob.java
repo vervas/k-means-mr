@@ -3,6 +3,7 @@ import java.io.IOException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -15,22 +16,29 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
 
-public class KMeansClusteringJob {
+public class KMeansClusteringJob extends Configured implements Tool {
 
     private static final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
 
-    public static void main(String[] args) throws IOException,
-            InterruptedException, ClassNotFoundException {
+    public static void main(String[] args) throws Exception {
+        ToolRunner.run(new KMeansClusteringJob(), null);
+    }
+
+    public int run(String[] arg0) throws Exception {
 
         int iteration = 0;
-        Configuration conf = new Configuration();
+        Configuration conf = getConf();
         conf.set("num.iteration", iteration + "");
+        conf.set("io.serializations","org.apache.hadoop.io.serializer.JavaSerialization,"
+                + "org.apache.hadoop.io.serializer.WritableSerialization");
 
         Path in = new Path("/clustering/import/data");
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
-        Path out = new Path("/clustering/depth_1");
+        Path out = new Path("/clustering/depth_0");
 
         Job job = Job.getInstance(conf);
         job.setJobName("KMeans Clustering");
@@ -82,17 +90,20 @@ public class KMeansClusteringJob {
                             LOG.info(key + " / " + value);
                         }
                     } catch (Exception e) {
+                        System.out.println("==========Error out");
                         e.printStackTrace();
                     }
                 }
             }
         }
+
+        return 0;
     }
 
     public static void writeExampleVectors(Configuration conf, Path in) throws IOException {
         try {
             SequenceFile.Writer dataWriter = SequenceFile.createWriter(conf, Writer.file(in),
-                    Writer.keyClass(Vector.class), Writer.keyClass(IntWritable.class));
+                    Writer.keyClass(Vector.class), Writer.valueClass(Vector.class));
 
             for (int i = 0; i < 100; i++) {
                 double[] random = new double[5];
@@ -101,6 +112,7 @@ public class KMeansClusteringJob {
                 }
                 dataWriter.append(new Vector(new double[]{0, 0, 0, 0, 0}), new Vector(random));
             }
+            dataWriter.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -110,7 +122,7 @@ public class KMeansClusteringJob {
     public static void writeExampleCenters(Configuration conf, Path center) throws IOException {
         try {
             SequenceFile.Writer centerWriter = SequenceFile.createWriter(conf, Writer.file(center),
-                    Writer.keyClass(Vector.class), Writer.keyClass(IntWritable.class));
+                    Writer.keyClass(Vector.class), Writer.valueClass(IntWritable.class));
 
             final IntWritable value = new IntWritable(0);
             for (int i = 0; i < 10; i++) {
@@ -120,6 +132,7 @@ public class KMeansClusteringJob {
                 }
                 centerWriter.append(new Vector(random), value);
             }
+            centerWriter.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
