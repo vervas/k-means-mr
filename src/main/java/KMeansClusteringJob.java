@@ -29,7 +29,8 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
     public int run(String[] arg0) throws Exception {
 
-        int iteration = 0;
+        int iteration = 1;
+
         Configuration conf = getConf();
         conf.set("num.iteration", iteration + "");
         conf.set("io.serializations","org.apache.hadoop.io.serializer.JavaSerialization,"
@@ -38,7 +39,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         Path in = new Path("/clustering/import/data");
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
-        Path out = new Path("/clustering/depth_0");
+        Path out = new Path("/clustering/depth_1");
 
         Job job = Job.getInstance(conf);
         job.setJobName("KMeans Clustering");
@@ -73,8 +74,39 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
         job.waitForCompletion(true);
 
+        long counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
+        iteration++;
+        while (counter > 0 && iteration < 5) {
+            conf = new Configuration();
+            conf.set("centroid.path", center.toString());
+            conf.set("num.iteration", iteration + "");
+            job = new Job(conf);
+            job.setJobName("KMeans Clustering " + iteration);
 
-        Path result = new Path("/clustering/depth_" + (iteration) + "/");
+            job.setMapperClass(KMeansMapper.class);
+            job.setReducerClass(KMeansReducer.class);
+            job.setJarByClass(KMeansMapper.class);
+
+            in = new Path("/clustering/depth_" + (iteration - 1) + "/");
+            out = new Path("/clustering/depth_" + iteration);
+
+            FileInputFormat.addInputPath(job, in);
+            if (fs.exists(out))
+                fs.delete(out, true);
+
+            FileOutputFormat.setOutputPath(job, out);
+            job.setInputFormatClass(SequenceFileInputFormat.class);
+            job.setOutputFormatClass(SequenceFileOutputFormat.class);
+            job.setOutputKeyClass(Vector.class);
+            job.setOutputValueClass(Vector.class);
+
+            job.waitForCompletion(true);
+            iteration++;
+            counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
+        }
+
+
+        Path result = new Path("files/clustering/depth_" + (iteration - 1) + "/");
 
         FileStatus[] statuses = fs.listStatus(result);
         for (FileStatus status : statuses) {
