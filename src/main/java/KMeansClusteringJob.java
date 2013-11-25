@@ -1,3 +1,4 @@
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import org.apache.commons.logging.Log;
@@ -74,13 +75,20 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
         job.waitForCompletion(true);
 
+        LOG.info("========Done iter: " + iteration);
+        printResult(iteration, fs, conf);
+
         long counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
         iteration++;
+
         while (counter > 0 && iteration < 5) {
-            conf = new Configuration();
-            conf.set("centroid.path", center.toString());
+            conf = getConf();
             conf.set("num.iteration", iteration + "");
-            job = new Job(conf);
+            conf.set("io.serializations","org.apache.hadoop.io.serializer.JavaSerialization,"
+                    + "org.apache.hadoop.io.serializer.WritableSerialization");
+            conf.set("centroid.path", center.toString());
+
+            job = Job.getInstance(conf);
             job.setJobName("KMeans Clustering " + iteration);
 
             job.setMapperClass(KMeansMapper.class);
@@ -101,12 +109,20 @@ public class KMeansClusteringJob extends Configured implements Tool {
             job.setOutputValueClass(Vector.class);
 
             job.waitForCompletion(true);
+
+            LOG.info("========Done iter: " + iteration);
+            printResult(iteration, fs, conf);
+
             iteration++;
+
             counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
         }
 
+        return 0;
+    }
 
-        Path result = new Path("files/clustering/depth_" + (iteration - 1) + "/");
+    public static void printResult(int iteration, FileSystem fs, Configuration conf) throws IOException {
+        Path result = new Path("files/clustering/depth_" + (iteration) + "/");
 
         FileStatus[] statuses = fs.listStatus(result);
         for (FileStatus status : statuses) {
@@ -118,8 +134,10 @@ public class KMeansClusteringJob extends Configured implements Tool {
                         SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
                         Vector key = new Vector();
                         Vector value = new Vector();
+                        int i=0;
                         while (reader.next(key, value)) {
                             LOG.info(key + " / " + value);
+                            i++;
                         }
                     } catch (Exception e) {
                         System.out.println("==========Error out");
@@ -128,8 +146,6 @@ public class KMeansClusteringJob extends Configured implements Tool {
                 }
             }
         }
-
-        return 0;
     }
 
     public static void writeExampleVectors(Configuration conf, Path in) throws IOException {
