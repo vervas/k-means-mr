@@ -30,17 +30,17 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
     public int run(String[] arg0) throws Exception {
 
-        int iteration = 1;
+        int iteration = 0;
 
         Configuration conf = getConf();
         conf.set("num.iteration", iteration + "");
-        conf.set("io.serializations","org.apache.hadoop.io.serializer.JavaSerialization,"
+        conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
                 + "org.apache.hadoop.io.serializer.WritableSerialization");
 
         Path in = new Path("/clustering/import/data");
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
-        Path out = new Path("/clustering/depth_1");
+        Path out = new Path("/clustering/depth_" + (iteration));
 
         Job job = Job.getInstance(conf);
         job.setJobName("KMeans Clustering");
@@ -70,13 +70,18 @@ public class KMeansClusteringJob extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, out);
         job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
+
         job.setOutputKeyClass(Vector.class);
         job.setOutputValueClass(Vector.class);
 
         job.waitForCompletion(true);
 
-        LOG.info("========Done iter: " + iteration);
-        printResult(iteration, fs, conf);
+        if (job.isSuccessful()) {
+            LOG.info("========Done iter: " + iteration);
+            printResult(out, fs, conf);
+        } else {
+            return 1;
+        }
 
         long counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
         iteration++;
@@ -84,7 +89,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         while (counter > 0 && iteration < 5) {
             conf = getConf();
             conf.set("num.iteration", iteration + "");
-            conf.set("io.serializations","org.apache.hadoop.io.serializer.JavaSerialization,"
+            conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
                     + "org.apache.hadoop.io.serializer.WritableSerialization");
             conf.set("centroid.path", center.toString());
 
@@ -105,13 +110,19 @@ public class KMeansClusteringJob extends Configured implements Tool {
             FileOutputFormat.setOutputPath(job, out);
             job.setInputFormatClass(SequenceFileInputFormat.class);
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
+
             job.setOutputKeyClass(Vector.class);
             job.setOutputValueClass(Vector.class);
 
-            job.waitForCompletion(true);
+            do job.waitForCompletion(true); while(!job.isSuccessful());
 
-            LOG.info("========Done iter: " + iteration);
-            printResult(iteration, fs, conf);
+            if (job.isSuccessful()) {
+                LOG.info("========Done iter: " + iteration);
+                printResult(out, fs, conf);
+            } else {
+                break;
+            }
+
 
             iteration++;
 
@@ -121,9 +132,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         return 0;
     }
 
-    public static void printResult(int iteration, FileSystem fs, Configuration conf) throws IOException {
-        Path result = new Path("files/clustering/depth_" + (iteration) + "/");
-
+    public static void printResult(Path result, FileSystem fs, Configuration conf) throws IOException {
         FileStatus[] statuses = fs.listStatus(result);
         for (FileStatus status : statuses) {
             if (!status.isDirectory()) {
@@ -134,8 +143,8 @@ public class KMeansClusteringJob extends Configured implements Tool {
                         SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
                         Vector key = new Vector();
                         Vector value = new Vector();
-                        int i=0;
-                        while (reader.next(key, value)) {
+                        int i = 0;
+                        while (reader.next(key, value) && i < 300) {
                             LOG.info(key + " / " + value);
                             i++;
                         }
@@ -153,7 +162,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             SequenceFile.Writer dataWriter = SequenceFile.createWriter(conf, Writer.file(in),
                     Writer.keyClass(Vector.class), Writer.valueClass(Vector.class));
 
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < 1000000; i++) {
                 double[] random = new double[5];
                 for (int j = 0; j < random.length; j++) {
                     random[j] = (int) (Math.random() * (100 + 1));
@@ -173,7 +182,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                     Writer.keyClass(Vector.class), Writer.valueClass(IntWritable.class));
 
             final IntWritable value = new IntWritable(0);
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 200; i++) {
                 double[] random = new double[5];
                 for (int j = 0; j < random.length; j++) {
                     random[j] = (int) (Math.random() * (100 + 1));

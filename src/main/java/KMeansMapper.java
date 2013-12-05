@@ -1,13 +1,15 @@
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.Reader;
 import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 // first iteration, k-random centers, in every follow-up iteration we have new calculated centers
@@ -51,7 +53,12 @@ public class KMeansMapper extends Mapper<Vector, Vector, Vector, Vector> {
                 }
             }
         }
-        context.write(nearest, value);
+        try {
+            context.write(nearest, value);
+        } catch (NullPointerException e) {
+            final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
+            LOG.info("------------Null in map " + nearest + ": " + value);
+        }
     }
 
 
