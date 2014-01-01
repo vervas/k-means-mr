@@ -63,6 +63,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             fs.delete(in, true);
         }
 
+
         writeExampleCenters(conf, center);
 
         writeExampleVectors(conf, in);
@@ -78,7 +79,6 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
         if (job.isSuccessful()) {
             LOG.info("========Done iter: " + iteration);
-            printResult(out, fs, conf);
         } else {
             return 1;
         }
@@ -86,49 +86,62 @@ public class KMeansClusteringJob extends Configured implements Tool {
         long counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
         iteration++;
 
-        while (counter > 0 && iteration < 5) {
+        while (iteration < 5) {
             conf = getConf();
             conf.set("num.iteration", iteration + "");
             conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
                     + "org.apache.hadoop.io.serializer.WritableSerialization");
             conf.set("centroid.path", center.toString());
 
-            job = Job.getInstance(conf);
-            job.setJobName("KMeans Clustering " + iteration);
+            Job jobi = Job.getInstance(conf);
+            jobi.setJobName("KMeans Clustering " + iteration);
 
-            job.setMapperClass(KMeansMapper.class);
-            job.setReducerClass(KMeansReducer.class);
-            job.setJarByClass(KMeansMapper.class);
+            jobi.setMapperClass(KMeansMapper.class);
+            jobi.setReducerClass(KMeansReducer.class);
+            jobi.setJarByClass(KMeansMapper.class);
 
             in = new Path("/clustering/depth_" + (iteration - 1) + "/");
             out = new Path("/clustering/depth_" + iteration);
 
-            FileInputFormat.addInputPath(job, in);
-            if (fs.exists(out))
+            FileInputFormat.addInputPath(jobi, in);
+            if (fs.exists(out)) {
                 fs.delete(out, true);
+            }
 
-            FileOutputFormat.setOutputPath(job, out);
-            job.setInputFormatClass(SequenceFileInputFormat.class);
-            job.setOutputFormatClass(SequenceFileOutputFormat.class);
+            FileOutputFormat.setOutputPath(jobi, out);
+            jobi.setInputFormatClass(SequenceFileInputFormat.class);
+            jobi.setOutputFormatClass(SequenceFileOutputFormat.class);
 
-            job.setOutputKeyClass(Vector.class);
-            job.setOutputValueClass(Vector.class);
+            jobi.setOutputKeyClass(Vector.class);
+            jobi.setOutputValueClass(Vector.class);
 
-            do job.waitForCompletion(true); while(!job.isSuccessful());
+            LOG.info("========Before job " + iteration);
 
-            if (job.isSuccessful()) {
+            //do jobi.waitForCompletion(true); while(!job.isSuccessful());
+            jobi.waitForCompletion(true);
+
+            if (jobi.isSuccessful()) {
                 LOG.info("========Done iter: " + iteration);
-                printResult(out, fs, conf);
             } else {
                 break;
             }
 
 
+            LOG.info("========Increasing iteration " + iteration);
             iteration++;
 
-            counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
+            //counter = jobi.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
+            LOG.info("========Iteration: " + iteration);
+            LOG.info("========Counter: " + counter);
         }
 
+        Path result = new Path("/clustering/depth_" + (iteration - 1) + "/");
+
+        printResult(result, fs, conf);
+        return 0;
+    }
+
+    public static int runIteration() {
         return 0;
     }
 
@@ -145,6 +158,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                         Vector value = new Vector();
                         int i = 0;
                         while (reader.next(key, value) && i < 300) {
+                            if (key.equals(value)) continue;
                             LOG.info(key + " / " + value);
                             i++;
                         }
@@ -152,6 +166,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                         System.out.println("==========Error out");
                         e.printStackTrace();
                     }
+                    LOG.info("========Done printing");
                 }
             }
         }
@@ -162,7 +177,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             SequenceFile.Writer dataWriter = SequenceFile.createWriter(conf, Writer.file(in),
                     Writer.keyClass(Vector.class), Writer.valueClass(Vector.class));
 
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < 1000; i++) {
                 double[] random = new double[5];
                 for (int j = 0; j < random.length; j++) {
                     random[j] = (int) (Math.random() * (100 + 1));
@@ -182,7 +197,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                     Writer.keyClass(Vector.class), Writer.valueClass(IntWritable.class));
 
             final IntWritable value = new IntWritable(0);
-            for (int i = 0; i < 200; i++) {
+            for (int i = 0; i < 10; i++) {
                 double[] random = new double[5];
                 for (int j = 0; j < random.length; j++) {
                     random[j] = (int) (Math.random() * (100 + 1));
