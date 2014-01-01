@@ -1,4 +1,3 @@
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import org.apache.commons.logging.Log;
@@ -29,119 +28,85 @@ public class KMeansClusteringJob extends Configured implements Tool {
     }
 
     public int run(String[] arg0) throws Exception {
-
         int iteration = 0;
-
         Configuration conf = getConf();
-        conf.set("num.iteration", iteration + "");
-        conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
-                + "org.apache.hadoop.io.serializer.WritableSerialization");
-
-        Path in = new Path("/clustering/import/data");
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
-        Path out = new Path("/clustering/depth_" + (iteration));
 
-        Job job = Job.getInstance(conf);
-        job.setJobName("KMeans Clustering");
+        String inputFile = "/clustering/import/data";
 
-        job.setMapperClass(KMeansMapper.class);
-        job.setReducerClass(KMeansReducer.class);
-        job.setJarByClass(KMeansMapper.class);
+        Path in = new Path(inputFile);
+        Path out = new Path("/clustering/depth_" + iteration);
 
-        FileInputFormat.addInputPath(job, in);
         FileSystem fs = FileSystem.get(conf);
+
         if (fs.exists(out)) {
             fs.delete(out, true);
         }
 
         if (fs.exists(center)) {
-            fs.delete(out, true);
+            fs.delete(center, true);
         }
 
         if (fs.exists(in)) {
             fs.delete(in, true);
         }
 
-
         writeExampleCenters(conf, center);
-
-        writeExampleVectors(conf, in);
-
-        FileOutputFormat.setOutputPath(job, out);
-        job.setInputFormatClass(SequenceFileInputFormat.class);
-        job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
-        job.setOutputKeyClass(Vector.class);
-        job.setOutputValueClass(Vector.class);
-
-        job.waitForCompletion(true);
-
-        if (job.isSuccessful()) {
-            LOG.info("========Done iter: " + iteration);
-        } else {
-            return 1;
-        }
-
-        long counter = job.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
-        iteration++;
+        writeExampleVectors(conf, new Path("/clustering/import/data"));
 
         while (iteration < 5) {
+            LOG.info("========Iteration: " + iteration);
             conf = getConf();
             conf.set("num.iteration", iteration + "");
             conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
                     + "org.apache.hadoop.io.serializer.WritableSerialization");
-            conf.set("centroid.path", center.toString());
 
-            Job jobi = Job.getInstance(conf);
-            jobi.setJobName("KMeans Clustering " + iteration);
+            inputFile = (iteration == 0) ? "/clustering/import/data" : "/clustering/depth_" + (iteration - 1);
 
-            jobi.setMapperClass(KMeansMapper.class);
-            jobi.setReducerClass(KMeansReducer.class);
-            jobi.setJarByClass(KMeansMapper.class);
-
-            in = new Path("/clustering/depth_" + (iteration - 1) + "/");
+            in = new Path(inputFile);
             out = new Path("/clustering/depth_" + iteration);
 
-            FileInputFormat.addInputPath(jobi, in);
+            conf.set("centroid.path", center.toString());
+
+            Job job = Job.getInstance(conf);
+            job.setJobName("KMeans Clustering " + iteration);
+
+            job.setMapperClass(KMeansMapper.class);
+            job.setReducerClass(KMeansReducer.class);
+            job.setJarByClass(KMeansMapper.class);
+
+            FileInputFormat.addInputPath(job, in);
             if (fs.exists(out)) {
                 fs.delete(out, true);
             }
 
-            FileOutputFormat.setOutputPath(jobi, out);
-            jobi.setInputFormatClass(SequenceFileInputFormat.class);
-            jobi.setOutputFormatClass(SequenceFileOutputFormat.class);
+            FileOutputFormat.setOutputPath(job, out);
+            job.setInputFormatClass(SequenceFileInputFormat.class);
+            job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
-            jobi.setOutputKeyClass(Vector.class);
-            jobi.setOutputValueClass(Vector.class);
+            job.setOutputKeyClass(Vector.class);
+            job.setOutputValueClass(Vector.class);
 
             LOG.info("========Before job " + iteration);
 
             //do jobi.waitForCompletion(true); while(!job.isSuccessful());
-            jobi.waitForCompletion(true);
+            job.waitForCompletion(true);
 
-            if (jobi.isSuccessful()) {
+            if (job.isSuccessful()) {
                 LOG.info("========Done iter: " + iteration);
             } else {
                 break;
             }
 
-
             LOG.info("========Increasing iteration " + iteration);
             iteration++;
-
-            //counter = jobi.getCounters().findCounter(KMeansReducer.Counter.CONVERGED).getValue();
-            LOG.info("========Iteration: " + iteration);
-            LOG.info("========Counter: " + counter);
         }
 
         Path result = new Path("/clustering/depth_" + (iteration - 1) + "/");
 
         printResult(result, fs, conf);
-        return 0;
-    }
 
-    public static int runIteration() {
         return 0;
     }
 
