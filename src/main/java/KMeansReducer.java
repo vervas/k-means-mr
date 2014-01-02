@@ -43,20 +43,20 @@ public class KMeansReducer extends Reducer<ClusterCenter, Vector, ClusterCenter,
     protected void cleanup(Context context) throws IOException, InterruptedException {
         super.cleanup(context);
         Configuration conf = context.getConfiguration();
+
+//        conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
+//                + "org.apache.hadoop.io.serializer.WritableSerialization");
+
         Path outPath = new Path(conf.get("centroid.path"));
         FileSystem fs = FileSystem.get(conf);
         fs.delete(outPath, true);
-        System.out.println("Reduce Cleanup: centers size:" + centers.size());
-        try {
-            SequenceFile.Writer out = SequenceFile.createWriter(conf,  Writer.file(outPath),
-                    Writer.keyClass(ClusterCenter.class),  Writer.keyClass(IntWritable.class));
-            final IntWritable value = new IntWritable(0);
-            for (ClusterCenter center : centers) {
-                out.append(center, value);
-            }
-            out.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+//        throw new IOException();
+        SequenceFile.Writer out = SequenceFile.createWriter(conf,  Writer.file(outPath),
+                Writer.keyClass(ClusterCenter.class),  Writer.valueClass(IntWritable.class));
+        final IntWritable value = new IntWritable(centers.size());
+        for (ClusterCenter center : centers) {
+            out.append(center, value);
         }
+        out.close();
     }
 }
