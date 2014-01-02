@@ -4,7 +4,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
@@ -24,7 +23,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
     private static final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
 
     public static void main(String[] args) throws Exception {
-        ToolRunner.run(new KMeansClusteringJob(), null);
+        ToolRunner.run(new Configuration(), new KMeansClusteringJob(), null);
     }
 
     public int run(String[] arg0) throws Exception {
@@ -62,10 +61,13 @@ public class KMeansClusteringJob extends Configured implements Tool {
             conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
                     + "org.apache.hadoop.io.serializer.WritableSerialization");
 
-            inputFile = (iteration == 0) ? "/clustering/import/data" : "/clustering/depth_" + (iteration - 1);
+            inputFile = (iteration == 0) ? "/clustering/import/data" : "/clustering/depth_" + (iteration - 1) + "/part-r-00000";
 
             in = new Path(inputFile);
             out = new Path("/clustering/depth_" + iteration);
+
+            printCenters(center, conf);
+            printVectors(in, conf);
 
             conf.set("centroid.path", center.toString());
 
@@ -85,12 +87,11 @@ public class KMeansClusteringJob extends Configured implements Tool {
             job.setInputFormatClass(SequenceFileInputFormat.class);
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
-            job.setOutputKeyClass(Vector.class);
+            job.setOutputKeyClass(ClusterCenter.class);
             job.setOutputValueClass(Vector.class);
 
             LOG.info("========Before job " + iteration);
 
-            //do jobi.waitForCompletion(true); while(!job.isSuccessful());
             job.waitForCompletion(true);
 
             if (job.isSuccessful()) {
@@ -99,55 +100,61 @@ public class KMeansClusteringJob extends Configured implements Tool {
                 break;
             }
 
+
             LOG.info("========Increasing iteration " + iteration);
             iteration++;
         }
 
-        Path result = new Path("/clustering/depth_" + (iteration - 1) + "/");
-
-        printResult(result, fs, conf);
-
         return 0;
     }
 
-    public static void printResult(Path result, FileSystem fs, Configuration conf) throws IOException {
-        FileStatus[] statuses = fs.listStatus(result);
-        for (FileStatus status : statuses) {
-            if (!status.isDirectory()) {
-                Path path = status.getPath();
-                if (!path.getName().equals("_SUCCESS")) {
-                    LOG.info("FOUND " + path.toString());
-                    try {
-                        SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
-                        Vector key = new Vector();
-                        Vector value = new Vector();
-                        int i = 0;
-                        while (reader.next(key, value) && i < 300) {
-                            if (key.equals(value)) continue;
-                            LOG.info(key + " / " + value);
-                            i++;
-                        }
-                    } catch (Exception e) {
-                        System.out.println("==========Error out");
-                        e.printStackTrace();
-                    }
-                    LOG.info("========Done printing");
-                }
+    public static void printCenters(Path path, Configuration conf) throws IOException {
+        LOG.info("FOUND " + path.toString());
+        try {
+            SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
+            ClusterCenter key = new ClusterCenter();
+            IntWritable value = new IntWritable();
+            int i = 0;
+            while (reader.next(key, value) && i < 3) {
+                LOG.info(key);
+                i++;
             }
+        } catch (Exception e) {
+            System.out.println("==========Error out");
+            e.printStackTrace();
         }
+        LOG.info("========Done printing");
+    }
+
+    public static void printVectors(Path path, Configuration conf) throws IOException {
+        LOG.info("FOUND " + path.toString());
+        try {
+            SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
+            ClusterCenter key = new ClusterCenter();
+            Vector value = new Vector();
+            int i = 0;
+            while (reader.next(key, value) && i < 3) {
+                LOG.info(key + " / " + value);
+                i++;
+            }
+        } catch (Exception e) {
+            System.out.println("==========Error out");
+            e.printStackTrace();
+        }
+        LOG.info("========Done printing");
     }
 
     public static void writeExampleVectors(Configuration conf, Path in) throws IOException {
         try {
             SequenceFile.Writer dataWriter = SequenceFile.createWriter(conf, Writer.file(in),
-                    Writer.keyClass(Vector.class), Writer.valueClass(Vector.class));
+                    Writer.keyClass(ClusterCenter.class), Writer.valueClass(Vector.class));
 
             for (int i = 0; i < 1000; i++) {
                 double[] random = new double[5];
                 for (int j = 0; j < random.length; j++) {
                     random[j] = (int) (Math.random() * (100 + 1));
                 }
-                dataWriter.append(new Vector(new double[]{0, 0, 0, 0, 0}), new Vector(random));
+                dataWriter.append(new ClusterCenter(new double[]{0, 0, 0, 0, 0}), new Vector(random));
             }
             dataWriter.close();
         } catch (Exception e) {
@@ -159,7 +166,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
     public static void writeExampleCenters(Configuration conf, Path center) throws IOException {
         try {
             SequenceFile.Writer centerWriter = SequenceFile.createWriter(conf, Writer.file(center),
-                    Writer.keyClass(Vector.class), Writer.valueClass(IntWritable.class));
+                    Writer.keyClass(ClusterCenter.class), Writer.valueClass(IntWritable.class));
 
             final IntWritable value = new IntWritable(0);
             for (int i = 0; i < 10; i++) {
@@ -167,7 +174,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                 for (int j = 0; j < random.length; j++) {
                     random[j] = (int) (Math.random() * (100 + 1));
                 }
-                centerWriter.append(new Vector(random), value);
+                centerWriter.append(new ClusterCenter(random), value);
             }
             centerWriter.close();
         } catch (Exception e) {

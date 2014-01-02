@@ -25,10 +25,6 @@ public final class Vector implements WritableComparable<Vector> {
         return vector;
     }
 
-    public void setVector(double[] vector) {
-        this.vector = vector;
-    }
-
     public Vector(Vector v) {
         super();
         int l = v.vector.length;
@@ -37,17 +33,25 @@ public final class Vector implements WritableComparable<Vector> {
     }
 
     @Override
-    public void write(DataOutput out) throws IOException {
-        out.writeInt(vector.length);
-        for (double aVector : vector) out.writeDouble(aVector);
+    public final void write(DataOutput out) throws IOException {
+        writeVector(this.vector, out);
+    }
+
+    public static void writeVector(double[] vectors, DataOutput out) throws IOException {
+        out.writeInt(vectors.length);
+        for (double vector : vectors) out.writeDouble(vector);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        int size = in.readInt();
-        vector = new double[size];
-        for (int i = 0; i < size; i++)
-            vector[i] = in.readDouble();
+        this.vector = readVector(in);
+    }
+
+    public static double[] readVector(DataInput in) throws IOException {
+        final int size = in.readInt();
+        double[] vector = new double[size];
+        for (int i = 0; i < size; i++) vector[i] = in.readDouble();
+        return vector;
     }
 
     @Override
@@ -79,7 +83,7 @@ public final class Vector implements WritableComparable<Vector> {
         if (vector == null) {
             if (other.vector != null)
                 return false;
-        } else if (!vector.equals(other.vector))
+        } else if (!Arrays.equals(vector, other.vector))
             return false;
         return true;
     }
@@ -93,14 +97,4 @@ public final class Vector implements WritableComparable<Vector> {
         }
     }
 
-    public double measureDistance(double[] set) {
-        double sum = 0;
-        int length = this.vector.length;
-        for (int i = 0; i < length; i++) {
-            double diff = set[i] - this.vector[i];
-            sum += (diff * diff);
-        }
-
-        return Math.sqrt(sum);
-    }
 }

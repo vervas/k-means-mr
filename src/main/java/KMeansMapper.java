@@ -1,5 +1,3 @@
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
@@ -11,11 +9,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-
 // first iteration, k-random centers, in every follow-up iteration we have new calculated centers
-public class KMeansMapper extends Mapper<Vector, Vector, Vector, Vector> {
+public class KMeansMapper extends  Mapper<ClusterCenter, Vector, ClusterCenter, Vector> {
 
-    private final List<Vector> centers = new ArrayList();
+    private final List<ClusterCenter> centers = new ArrayList<ClusterCenter>();
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -25,10 +22,10 @@ public class KMeansMapper extends Mapper<Vector, Vector, Vector, Vector> {
 
         try {
             SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(centroids));
-            Vector key = new Vector();
+            ClusterCenter key = new ClusterCenter();
             IntWritable value = new IntWritable();
             while (reader.next(key, value)) {
-                Vector clusterCenter = new Vector(key);
+                ClusterCenter clusterCenter = new ClusterCenter(key);
                 centers.add(clusterCenter);
             }
             reader.close();
@@ -38,28 +35,20 @@ public class KMeansMapper extends Mapper<Vector, Vector, Vector, Vector> {
     }
 
     @Override
-    protected void map(Vector key, Vector value, Context context) throws IOException, InterruptedException {
-        Vector nearest = null;
+    protected void map(ClusterCenter key, Vector value, Context context) throws IOException, InterruptedException {
+        ClusterCenter nearest = centers.get(0);
         double nearestDistance = Double.MAX_VALUE;
-        for (Vector c : centers) {
+        for (ClusterCenter c : centers) {
             double dist = c.measureDistance(value.getVector());
-            if (nearest == null) {
-                nearest = c;
-                nearestDistance = dist;
-            } else {
-                if (nearestDistance > dist) {
+            if (nearestDistance > dist) {
                     nearest = c;
                     nearestDistance = dist;
-                }
             }
         }
         try {
             context.write(nearest, value);
         } catch (NullPointerException e) {
-            final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
-            LOG.info("------------Null in map " + nearest + ": " + value);
+            e.printStackTrace();
         }
     }
-
-
 }

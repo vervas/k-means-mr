@@ -12,19 +12,14 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 
 // calculate a new Vector for these vertices
-@SuppressWarnings("deprecation")
-public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
+public class KMeansReducer extends Reducer<ClusterCenter, Vector, ClusterCenter, Vector> {
 
-    public static enum Counter {
-        CONVERGED
-    }
-
-    private final List<Vector> centers = new ArrayList();
+    private final List<ClusterCenter> centers = new ArrayList<ClusterCenter>();
 
     @Override
-    protected void reduce(Vector key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
-        Vector newCenter = new Vector();
-        List<Vector> vectorList = new ArrayList();
+    protected void reduce(ClusterCenter key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
+        ClusterCenter newCenter = new ClusterCenter();
+        List<Vector> vectorList = new ArrayList<Vector>();
         int vectorSize = key.getVector().length;
         newCenter.setVector(new double[vectorSize]);
         for (Vector value : values) {
@@ -38,16 +33,11 @@ public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
             newCenter.getVector()[i] = newCenter.getVector()[i] / vectorList.size();
         }
 
-        Vector center = new Vector(newCenter);
+        ClusterCenter center = new ClusterCenter(newCenter);
         centers.add(center);
         for (Vector vector : vectorList) {
             context.write(center, vector);
         }
-
-        final double CONV_FACTOR = 10L;          // Convergence factor (random atm)
-        if (center.measureDistance(newCenter.getVector())<CONV_FACTOR)
-            context.getCounter(Counter.CONVERGED).increment(1);
-
     }
 
     protected void cleanup(Context context) throws IOException, InterruptedException {
@@ -56,13 +46,15 @@ public class KMeansReducer extends Reducer<Vector, Vector, Vector, Vector> {
         Path outPath = new Path(conf.get("centroid.path"));
         FileSystem fs = FileSystem.get(conf);
         fs.delete(outPath, true);
+        System.out.println("Reduce Cleanup: centers size:" + centers.size());
         try {
-            SequenceFile.Writer out = SequenceFile.createWriter(context.getConfiguration(),  Writer.file(outPath),
-                    Writer.keyClass(Vector.class),  Writer.keyClass(IntWritable.class));
+            SequenceFile.Writer out = SequenceFile.createWriter(conf,  Writer.file(outPath),
+                    Writer.keyClass(ClusterCenter.class),  Writer.keyClass(IntWritable.class));
             final IntWritable value = new IntWritable(0);
-            for (Vector center : centers) {
+            for (ClusterCenter center : centers) {
                 out.append(center, value);
             }
+            out.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
