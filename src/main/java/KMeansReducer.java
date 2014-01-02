@@ -44,13 +44,10 @@ public class KMeansReducer extends Reducer<ClusterCenter, Vector, ClusterCenter,
         super.cleanup(context);
         Configuration conf = context.getConfiguration();
 
-//        conf.set("io.serializations", "org.apache.hadoop.io.serializer.JavaSerialization,"
-//                + "org.apache.hadoop.io.serializer.WritableSerialization");
-
         Path outPath = new Path(conf.get("centroid.path"));
         FileSystem fs = FileSystem.get(conf);
         fs.delete(outPath, true);
-//        throw new IOException();
+
         SequenceFile.Writer out = SequenceFile.createWriter(conf,  Writer.file(outPath),
                 Writer.keyClass(ClusterCenter.class),  Writer.valueClass(IntWritable.class));
         final IntWritable value = new IntWritable(centers.size());

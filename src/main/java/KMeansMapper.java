@@ -20,18 +20,14 @@ public class KMeansMapper extends  Mapper<ClusterCenter, Vector, ClusterCenter, 
         Configuration conf = context.getConfiguration();
         Path centroids = new Path(conf.get("centroid.path"));
 
-        try {
-            SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(centroids));
-            ClusterCenter key = new ClusterCenter();
-            IntWritable value = new IntWritable();
-            while (reader.next(key, value)) {
-                ClusterCenter clusterCenter = new ClusterCenter(key);
-                centers.add(clusterCenter);
-            }
-            reader.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(centroids));
+        ClusterCenter key = new ClusterCenter();
+        IntWritable value = new IntWritable();
+        while (reader.next(key, value)) {
+            ClusterCenter clusterCenter = new ClusterCenter(key);
+            centers.add(clusterCenter);
         }
+        reader.close();
     }
 
     @Override
@@ -45,10 +41,7 @@ public class KMeansMapper extends  Mapper<ClusterCenter, Vector, ClusterCenter, 
                     nearestDistance = dist;
             }
         }
-        try {
-            context.write(nearest, value);
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-        }
+
+        context.write(nearest, value);
     }
 }
