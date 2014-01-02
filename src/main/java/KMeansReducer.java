@@ -19,9 +19,8 @@ public class KMeansReducer extends Reducer<Text, Vector, Text, Vector> {
     protected void reduce(Text key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
         Vector newCenter = new Vector();
         List<Vector> vectorList = new ArrayList<Vector>();
+        newCenter.setVector(new double[5]);
         for (Vector value : values) {
-            int vectorSize = value.getVector().length;
-            newCenter.setVector(new double[vectorSize]);
             vectorList.add(new Vector(value));
             for (int i = 0; i < value.getVector().length; i++) {
                 newCenter.getVector()[i] += value.getVector()[i];

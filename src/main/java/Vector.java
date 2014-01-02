@@ -3,10 +3,10 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Arrays;
 
-import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.Writable;
 
 
-public final class Vector implements WritableComparable<Vector> {
+public final class Vector implements Writable {
 
     private double[] vector;
 
@@ -38,33 +38,15 @@ public final class Vector implements WritableComparable<Vector> {
 
     @Override
     public final void write(DataOutput out) throws IOException {
-        writeVector(this.vector, out);
-    }
-
-    public static void writeVector(double[] vectors, DataOutput out) throws IOException {
-        out.writeInt(vectors.length);
-        for (double vector : vectors) out.writeDouble(vector);
+        out.writeInt(vector.length);
+        for (double vector : this.vector) out.writeDouble(vector);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        this.vector = readVector(in);
-    }
-
-    public static double[] readVector(DataInput in) throws IOException {
         final int size = in.readInt();
-        double[] vector = new double[size];
+        vector = new double[size];
         for (int i = 0; i < size; i++) vector[i] = in.readDouble();
-        return vector;
-    }
-
-    @Override
-    public int compareTo(Vector o) {
-        for (int i = 0; i < vector.length; i++) {
-            double c = vector[i] - o.vector[i];
-            if (c != 0.0d) return 1;
-        }
-        return 0;
     }
 
     @Override
