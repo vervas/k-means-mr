@@ -5,24 +5,23 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.Writer;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-
 // calculate a new Vector for these vertices
-public class KMeansReducer extends Reducer<ClusterCenter, Vector, ClusterCenter, Vector> {
+public class KMeansReducer extends Reducer<Text, Vector, Text, Vector> {
 
-    private final List<ClusterCenter> centers = new ArrayList<ClusterCenter>();
+    private final List<Cluster> clusters = new ArrayList<Cluster>();
 
     @Override
-    protected void reduce(ClusterCenter key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
-        ClusterCenter newCenter = new ClusterCenter();
+    protected void reduce(Text key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
+        Vector newCenter = new Vector();
         List<Vector> vectorList = new ArrayList<Vector>();
-        int vectorSize = key.getVector().length;
-        newCenter.setVector(new double[vectorSize]);
         for (Vector value : values) {
+            int vectorSize = value.getVector().length;
+            newCenter.setVector(new double[vectorSize]);
             vectorList.add(new Vector(value));
             for (int i = 0; i < value.getVector().length; i++) {
                 newCenter.getVector()[i] += value.getVector()[i];
@@ -33,10 +32,10 @@ public class KMeansReducer extends Reducer<ClusterCenter, Vector, ClusterCenter,
             newCenter.getVector()[i] = newCenter.getVector()[i] / vectorList.size();
         }
 
-        ClusterCenter center = new ClusterCenter(newCenter);
-        centers.add(center);
+        Cluster center = new Cluster(new Text(key), newCenter);
+        clusters.add(center);
         for (Vector vector : vectorList) {
-            context.write(center, vector);
+            context.write(key, vector);
         }
     }
 
@@ -49,10 +48,9 @@ public class KMeansReducer extends Reducer<ClusterCenter, Vector, ClusterCenter,
         fs.delete(outPath, true);
 
         SequenceFile.Writer out = SequenceFile.createWriter(conf,  Writer.file(outPath),
-                Writer.keyClass(ClusterCenter.class),  Writer.valueClass(IntWritable.class));
-        final IntWritable value = new IntWritable(centers.size());
-        for (ClusterCenter center : centers) {
-            out.append(center, value);
+                Writer.keyClass(Text.class),  Writer.valueClass(Vector.class));
+        for (Cluster cluster : clusters) {
+            out.append(cluster.getName(), cluster.getCenter());
         }
         out.close();
     }

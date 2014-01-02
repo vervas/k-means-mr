@@ -25,10 +25,6 @@ public final class ClusterCenter implements WritableComparable<ClusterCenter> {
         return center;
     }
 
-    public void setVector(double[] center) {
-        this.center = center;
-    }
-
     public ClusterCenter(ClusterCenter center) {
         super();
         int l = center.center.length;
@@ -89,14 +85,5 @@ public final class ClusterCenter implements WritableComparable<ClusterCenter> {
         }
     }
 
-    public double measureDistance(double[] set) {
-        double sum = 0;
-        int length = this.center.length;
-        for (int i = 0; i < length; i++) {
-            double diff = set[i] - this.center[i];
-            sum += (diff * diff);
-        }
 
-        return Math.sqrt(sum);
-    }
 }

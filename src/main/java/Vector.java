@@ -25,6 +25,10 @@ public final class Vector implements WritableComparable<Vector> {
         return vector;
     }
 
+    public void setVector(double[] vector) {
+        this.vector = vector;
+    }
+
     public Vector(Vector v) {
         super();
         int l = v.vector.length;
@@ -97,4 +101,14 @@ public final class Vector implements WritableComparable<Vector> {
         }
     }
 
+    public double measureDistance(double[] set) {
+        double sum = 0;
+        int length = this.vector.length;
+        for (int i = 0; i < length; i++) {
+            double diff = set[i] - this.vector[i];
+            sum += (diff * diff);
+        }
+
+        return Math.sqrt(sum);
+    }
 }
