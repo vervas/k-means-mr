@@ -22,13 +22,29 @@ import org.apache.hadoop.util.ToolRunner;
 public class KMeansClusteringJob extends Configured implements Tool {
 
     private static final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
+    private int max_iterations = 5;
+    private int clusters_number = 10;
 
     public static void main(String[] args) throws Exception {
-        ToolRunner.run(new Configuration(), new KMeansClusteringJob(), null);
+        ToolRunner.run(new Configuration(), new KMeansClusteringJob(), args);
     }
 
-    public int run(String[] arg0) throws Exception {
+    public int run(String[] args) throws Exception {
         int iteration = 0;
+        LOG.info(args[0] + ": " + args[1]);
+
+        try {
+            if (args.length > 2) clusters_number = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e){
+            LOG.error("Invalid clusters number argument. Using default: " + clusters_number);
+        }
+
+        try {
+            if (args.length > 3) max_iterations = Integer.parseInt(args[3]);
+        } catch (NumberFormatException e){
+            LOG.error("Invalid max iterations argument. Using default: " + max_iterations);
+        }
+
         Configuration conf = getConf();
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
@@ -37,10 +53,10 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
         Path in = new Path(inputFile);
 
-        writeExampleCenters(conf, center, 10);
+        writeExampleCenters(conf, center, clusters_number);
         writeExampleVectors(conf, in);
 
-        while (iteration < 5) {
+        while (iteration < max_iterations) {
             LOG.info("========Iteration: " + iteration);
             conf = getConf();
             conf.set("num.iteration", iteration + "");
