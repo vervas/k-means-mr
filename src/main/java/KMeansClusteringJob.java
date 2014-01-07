@@ -47,7 +47,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             conf.set("centroid.path", center.toString());
             FileSystem fs = FileSystem.get(conf);
 
-            inputFile = (iteration == 0) ? "/clustering/import/data" : "/clustering/depth_" + (iteration - 1) + "/part-r-00000";
+            inputFile = (iteration == 0) ? inputFile : "/clustering/depth_" + (iteration - 1) + "/part-r-00000";
 
             in = new Path(inputFile);
             Path out = new Path("/clustering/depth_" + iteration);

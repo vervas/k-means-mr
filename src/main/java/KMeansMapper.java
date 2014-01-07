@@ -9,10 +9,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-// first iteration, k-random centers, in every follow-up iteration we have new calculated centers
 public class KMeansMapper extends  Mapper<Text, Vector, Text, Vector> {
 
-    private final List<Cluster> clusters = new ArrayList<Cluster>();
+    private final List<ClusterCenter> clusterCenters = new ArrayList<ClusterCenter>();
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -24,20 +23,20 @@ public class KMeansMapper extends  Mapper<Text, Vector, Text, Vector> {
         Text key = new Text();
         Vector value = new Vector();
         while (reader.next(key, value)) {
-            Cluster cluster = new Cluster(new Text(key), new Vector(value));
-            clusters.add(cluster);
+            ClusterCenter clusterCenter = new ClusterCenter(new Text(key), new Vector(value));
+            clusterCenters.add(clusterCenter);
         }
         reader.close();
     }
 
     @Override
     protected void map(Text key, Vector value, Context context) throws IOException, InterruptedException {
-        Cluster nearest = clusters.get(0);
+        ClusterCenter nearest = clusterCenters.get(0);
         double nearestDistance = Double.MAX_VALUE;
-        for (Cluster cluster : clusters) {
-            double dist = cluster.getCenter().measureDistance(value.getVector());
+        for (ClusterCenter clusterCenter : clusterCenters) {
+            double dist = clusterCenter.measureDistance(value.getVector());
             if (nearestDistance > dist) {
-                    nearest = cluster;
+                    nearest = clusterCenter;
                     nearestDistance = dist;
             }
         }

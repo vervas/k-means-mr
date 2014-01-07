@@ -10,10 +10,9 @@ import org.apache.hadoop.io.SequenceFile.Writer;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-// calculate a new Vector for these vertices
 public class KMeansReducer extends Reducer<Text, Vector, Text, Vector> {
 
-    private final List<Cluster> clusters = new ArrayList<Cluster>();
+    private final List<ClusterCenter> clusterCenters = new ArrayList<ClusterCenter>();
 
     @Override
     protected void reduce(Text key, Iterable<Vector> values, Context context) throws IOException, InterruptedException {
@@ -31,8 +30,8 @@ public class KMeansReducer extends Reducer<Text, Vector, Text, Vector> {
             newCenter.getVector()[i] = newCenter.getVector()[i] / vectorList.size();
         }
 
-        Cluster center = new Cluster(new Text(key), newCenter);
-        clusters.add(center);
+        ClusterCenter center = new ClusterCenter(new Text(key), newCenter);
+        clusterCenters.add(center);
         for (Vector vector : vectorList) {
             context.write(key, vector);
         }
@@ -48,8 +47,8 @@ public class KMeansReducer extends Reducer<Text, Vector, Text, Vector> {
 
         SequenceFile.Writer out = SequenceFile.createWriter(conf,  Writer.file(outPath),
                 Writer.keyClass(Text.class),  Writer.valueClass(Vector.class));
-        for (Cluster cluster : clusters) {
-            out.append(cluster.getName(), cluster.getCenter());
+        for (ClusterCenter clusterCenter : clusterCenters) {
+            out.append(clusterCenter.getName(), clusterCenter.getCenter());
         }
         out.close();
     }

@@ -82,15 +82,4 @@ public final class Vector implements Writable {
             return vector.length + "x1";
         }
     }
-
-    public double measureDistance(double[] set) {
-        double sum = 0;
-        int length = this.vector.length;
-        for (int i = 0; i < length; i++) {
-            double diff = set[i] - this.vector[i];
-            sum += (diff * diff);
-        }
-
-        return Math.sqrt(sum);
-    }
 }
