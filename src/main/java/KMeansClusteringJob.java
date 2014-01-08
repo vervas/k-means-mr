@@ -26,8 +26,8 @@ import org.apache.hadoop.util.ToolRunner;
 public class KMeansClusteringJob extends Configured implements Tool {
 
     private final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
-    private int max_iterations = 5;
     private int clusters_number = 10;
+    private int max_iterations = 5;
 
     private List<Vector> clusterCenters = new ArrayList<Vector>();
 
@@ -194,7 +194,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             br = new BufferedReader(new InputStreamReader(fs.open(dataSource)));
             int[] candidates = new int[clusters_number];
             for (int j = 0; j < candidates.length; j++) {
-                candidates[j] = (int)(Math.random() * (dataSize + 1));
+                candidates[j] = (int)(Math.random() * (dataSize));
             }
 
             int i=0;
