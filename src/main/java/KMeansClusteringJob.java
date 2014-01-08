@@ -1,4 +1,8 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,6 +29,8 @@ public class KMeansClusteringJob extends Configured implements Tool {
     private int max_iterations = 5;
     private int clusters_number = 10;
 
+    private static List<Vector> clusterCenters = new ArrayList<Vector>();
+
     public static void main(String[] args) throws Exception {
         ToolRunner.run(new Configuration(), new KMeansClusteringJob(), args);
     }
@@ -49,12 +55,13 @@ public class KMeansClusteringJob extends Configured implements Tool {
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
 
-        String inputFile = "/clustering/import/data";
+        String target = "/clustering/import/data";
 
-        Path in = new Path(inputFile);
+        Path dataSource = new Path(args[0]);
+        Path in = new Path(target);
 
-        writeExampleCenters(conf, center, clusters_number);
-        writeExampleVectors(conf, in);
+        writeVectors(conf, dataSource, in, Integer.parseInt(args[1]));
+        writeCenters(conf, center);
 
         while (iteration < max_iterations) {
             LOG.info("========Iteration: " + iteration);
@@ -63,7 +70,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             conf.set("centroid.path", center.toString());
             FileSystem fs = FileSystem.get(conf);
 
-            inputFile = (iteration == 0) ? inputFile : "/clustering/depth_" + (iteration - 1) + "/part-r-00000";
+            String inputFile = (iteration == 0) ? target : "/clustering/depth_" + (iteration - 1) + "/part-r-00000";
 
             in = new Path(inputFile);
             Path out = new Path("/clustering/depth_" + iteration);
@@ -169,31 +176,69 @@ public class KMeansClusteringJob extends Configured implements Tool {
         LOG.info("========Done printing");
     }
 
-    public static void writeExampleVectors(Configuration conf, Path in) throws IOException {
+    public static void writeVectors(Configuration conf, Path dataSource, Path target, int dataSize) throws IOException {
         FileSystem fs = FileSystem.get(conf);
-        if (fs.exists(in)) {
-            fs.delete(in, true);
+        if (fs.exists(target)) {
+            fs.delete(target, true);
         }
+
+        BufferedReader br = null;
+        SequenceFile.Writer dataWriter = null;
+        String line;
+        String delimiter = ",";
 
         try {
-            SequenceFile.Writer dataWriter = SequenceFile.createWriter(conf, Writer.file(in),
+            dataWriter = SequenceFile.createWriter(conf, Writer.file(target),
                     Writer.keyClass(Text.class), Writer.valueClass(Vector.class));
 
-            for (int i = 0; i < 1000; i++) {
-                double[] random = new double[5];
-                for (int j = 0; j < random.length; j++) {
-                    random[j] = (int) (Math.random() * (100 + 1));
-                }
-                dataWriter.append(new Text(""), new Vector(random));
+            br = new BufferedReader(new InputStreamReader(fs.open(dataSource)));
+            int[] candidates = new int[0];
+            for (int j = 0; j < candidates.length; j++) {
+                candidates[j] = (int)(Math.random() * (dataSize + 1));
             }
-            dataWriter.close();
+
+            int i=0;
+            br.readLine();
+            Vector tempVector = new Vector(new double[]{0, 0, 0, 0, 0});
+            while ((line = br.readLine()) != null && (i++ < dataSize)) {
+                String[] values = line.split(delimiter);
+                double[] vector = new double[5];
+
+                for (int j = 0; j < 5; j++) {
+                    if (values[j+3].length()<6) continue;
+                    int value = Integer.parseInt(values[j+3].substring(3));
+                    vector[j] = value;
+                }
+
+                Vector newVector = new Vector(vector);
+                if (tempVector.equals(newVector)) continue;
+                tempVector = newVector;
+
+                for (int candidate : candidates) {
+                    if (i == candidate) clusterCenters.add(newVector);
+                }
+
+                dataWriter.append(new Text(""), newVector);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (br != null) {
+                try {
+                    dataWriter.close();
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
-
     }
 
-    public static void writeExampleCenters(Configuration conf, Path center, int clusters) throws IOException {
+    public static void writeCenters(Configuration conf, Path center) throws IOException {
         FileSystem fs = FileSystem.get(conf);
         if (fs.exists(center)) {
             fs.delete(center, true);
@@ -203,12 +248,9 @@ public class KMeansClusteringJob extends Configured implements Tool {
             SequenceFile.Writer centerWriter = SequenceFile.createWriter(conf, Writer.file(center),
                     Writer.keyClass(Text.class), Writer.valueClass(Vector.class));
 
-            for (int i = 0; i < clusters; i++) {
-                double[] random = new double[5];
-                for (int j = 0; j < random.length; j++) {
-                    random[j] = (int) (Math.random() * (100 + 1));
-                }
-                centerWriter.append(new Text("cluster" + i), new Vector(random));
+            int i=0;
+            for (Vector cluster : clusterCenters) {
+                centerWriter.append(new Text("cluster" + i++), cluster);
             }
             centerWriter.close();
         } catch (Exception e) {
