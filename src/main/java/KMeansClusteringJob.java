@@ -60,7 +60,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         Path dataSource = new Path(args[0]);
         Path in = new Path(target);
 
-        writeVectors(conf, dataSource, in, Integer.parseInt(args[1]));
+        writeVectors(conf, dataSource, in, Integer.parseInt(args[1]), clusters_number);
         writeCenters(conf, center);
 
         while (iteration < max_iterations) {
@@ -176,7 +176,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         LOG.info("========Done printing");
     }
 
-    public static void writeVectors(Configuration conf, Path dataSource, Path target, int dataSize) throws IOException {
+    public static void writeVectors(Configuration conf, Path dataSource, Path target, int dataSize, int clusters_number) throws IOException {
         FileSystem fs = FileSystem.get(conf);
         if (fs.exists(target)) {
             fs.delete(target, true);
@@ -192,7 +192,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                     Writer.keyClass(Text.class), Writer.valueClass(Vector.class));
 
             br = new BufferedReader(new InputStreamReader(fs.open(dataSource)));
-            int[] candidates = new int[0];
+            int[] candidates = new int[clusters_number];
             for (int j = 0; j < candidates.length; j++) {
                 candidates[j] = (int)(Math.random() * (dataSize + 1));
             }
