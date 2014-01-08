@@ -25,11 +25,11 @@ import org.apache.hadoop.util.ToolRunner;
 
 public class KMeansClusteringJob extends Configured implements Tool {
 
-    private static final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
+    private final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
     private int max_iterations = 5;
     private int clusters_number = 10;
 
-    private static List<Vector> clusterCenters = new ArrayList<Vector>();
+    private List<Vector> clusterCenters = new ArrayList<Vector>();
 
     public static void main(String[] args) throws Exception {
         ToolRunner.run(new Configuration(), new KMeansClusteringJob(), args);
@@ -60,7 +60,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         Path dataSource = new Path(args[0]);
         Path in = new Path(target);
 
-        writeVectors(conf, dataSource, in, Integer.parseInt(args[1]), clusters_number);
+        writeVectors(conf, dataSource, in, Integer.parseInt(args[1]));
         writeCenters(conf, center);
 
         while (iteration < max_iterations) {
@@ -142,7 +142,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         LOG.info("========DONE");
     }
 
-    public static void printCenters(Path path, Configuration conf) throws IOException {
+    public void printCenters(Path path, Configuration conf) throws IOException {
         LOG.info("FOUND " + path.toString());
         try {
             SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
@@ -159,7 +159,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         LOG.info("========Done printing");
     }
 
-    public static void printVectors(Path path, Configuration conf) throws IOException {
+    public void printVectors(Path path, Configuration conf) throws IOException {
         LOG.info("FOUND " + path.toString());
         try {
             SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
@@ -176,7 +176,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         LOG.info("========Done printing");
     }
 
-    public static void writeVectors(Configuration conf, Path dataSource, Path target, int dataSize, int clusters_number) throws IOException {
+    public void writeVectors(Configuration conf, Path dataSource, Path target, int dataSize) throws IOException {
         FileSystem fs = FileSystem.get(conf);
         if (fs.exists(target)) {
             fs.delete(target, true);
@@ -238,7 +238,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         }
     }
 
-    public static void writeCenters(Configuration conf, Path center) throws IOException {
+    public void writeCenters(Configuration conf, Path center) throws IOException {
         FileSystem fs = FileSystem.get(conf);
         if (fs.exists(center)) {
             fs.delete(center, true);
