@@ -194,13 +194,13 @@ public class KMeansClusteringJob extends Configured implements Tool {
             br = new BufferedReader(new InputStreamReader(fs.open(dataSource)));
             int[] candidates = new int[clusters_number];
             for (int j = 0; j < candidates.length; j++) {
-                candidates[j] = (int)(Math.random() * (dataSize));
+                candidates[j] = 1 + (int) (Math.random() * dataSize);
             }
 
             int i=0;
             br.readLine();
             Vector tempVector = new Vector(new double[]{0, 0, 0, 0, 0});
-            while ((line = br.readLine()) != null && (i++ < dataSize)) {
+            while ((line = br.readLine()) != null && (i < dataSize)) {
                 String[] values = line.split(delimiter);
                 double[] vector = new double[5];
 
@@ -213,6 +213,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                 Vector newVector = new Vector(vector);
                 if (tempVector.equals(newVector)) continue;
                 tempVector = newVector;
+                i++;
 
                 for (int candidate : candidates) {
                     if (i == candidate) clusterCenters.add(newVector);
