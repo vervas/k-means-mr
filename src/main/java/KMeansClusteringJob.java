@@ -179,27 +179,25 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
             int i=0;
             br.readLine();
-            Vector tempVector = new Vector(new double[]{0, 0, 0, 0, 0});
-            while ((line = br.readLine()) != null && (i < dataSize)) {
+            while ((line = br.readLine()) != null && (i++ < dataSize)) {
                 String[] values = line.split(delimiter);
                 double[] vector = new double[5];
 
-                for (int j = 0; j < 5; j++) {
-                    if (values[j+3].length()<6) continue;
-                    int value = Integer.parseInt(values[j+3].substring(4));
-                    vector[j] = value;
+                for (int k=0; k<5; k++) {
+                    for (int j = 0; j < 5; j++) {
+                        if (values[j+3].length()<6) continue;
+                        double value = Integer.parseInt(values[j+3].substring(4)) * Math.random();
+                        vector[j] = value;
+                    }
+
+                    Vector newVector = new Vector(vector);
+
+                    for (int candidate : candidates) {
+                        if (i == candidate) clusterCenters.add(newVector);
+                    }
+
+                    dataWriter.append(new Text(""), newVector);
                 }
-
-                Vector newVector = new Vector(vector);
-                if (tempVector.equals(newVector)) continue;
-                tempVector = newVector;
-                i++;
-
-                for (int candidate : candidates) {
-                    if (i == candidate) clusterCenters.add(newVector);
-                }
-
-                dataWriter.append(new Text(""), newVector);
             }
         } catch (IOException e) {
             e.printStackTrace();
