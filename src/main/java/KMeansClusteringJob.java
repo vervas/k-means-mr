@@ -70,9 +70,9 @@ public class KMeansClusteringJob extends Configured implements Tool {
             conf.set("centroid.path", center.toString());
             FileSystem fs = FileSystem.get(conf);
 
-            String inputFile = (iteration == 0) ? target : "/clustering/depth_" + (iteration - 1) + "/part-r-00000";
+            String inputPath = (iteration == 0) ? target : "/clustering/depth_" + (iteration - 1) + "/";
 
-            in = new Path(inputFile);
+            in = new Path(inputPath);
             Path out = new Path("/clustering/depth_" + iteration);
 
             Job job = Job.getInstance(conf);
@@ -146,8 +146,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
             Text key = new Text();
             Vector value = new Vector();
-            int i = 0;
-            while (reader.next(key, value) && i++ < 10) {
+            while (reader.next(key, value)) {
                 LOG.info(key + "\t/ " + value);
             }
         } catch (Exception e) {
@@ -187,7 +186,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
                 for (int j = 0; j < 5; j++) {
                     if (values[j+3].length()<6) continue;
-                    int value = Integer.parseInt(values[j+3].substring(3));
+                    int value = Integer.parseInt(values[j+3].substring(4));
                     vector[j] = value;
                 }
 
