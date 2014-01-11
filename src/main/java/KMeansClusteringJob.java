@@ -75,9 +75,6 @@ public class KMeansClusteringJob extends Configured implements Tool {
             in = new Path(inputFile);
             Path out = new Path("/clustering/depth_" + iteration);
 
-            printCenters(center, conf);
-            printVectors(in, conf);
-
             Job job = Job.getInstance(conf);
             job.setJobName("KMeans Clustering " + iteration);
 
@@ -113,6 +110,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             iteration++;
         }
 
+        printCenters(center, conf);
         saveResult(new Path("/clustering/depth_" + (iteration - 1) + "/part-r-00000"), conf);
 
         return 0;
@@ -151,23 +149,6 @@ public class KMeansClusteringJob extends Configured implements Tool {
             int i = 0;
             while (reader.next(key, value) && i++ < 10) {
                 LOG.info(key + "\t/ " + value);
-            }
-        } catch (Exception e) {
-            System.out.println("==========Error out");
-            e.printStackTrace();
-        }
-        LOG.info("========Done printing");
-    }
-
-    public void printVectors(Path path, Configuration conf) throws IOException {
-        LOG.info("FOUND " + path.toString());
-        try {
-            SequenceFile.Reader reader = new SequenceFile.Reader(conf, Reader.file(path));
-            Text key = new Text();
-            Vector value = new Vector();
-            int i = 0;
-            while (reader.next(key, value) && i++ < 10) {
-                LOG.info(key + "\t / " + value);
             }
         } catch (Exception e) {
             System.out.println("==========Error out");
