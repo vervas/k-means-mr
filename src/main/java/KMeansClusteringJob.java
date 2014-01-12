@@ -37,7 +37,6 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
     public int run(String[] args) throws Exception {
         int iteration = 0;
-        LOG.info(args[0] + ": " + args[1]);
 
         try {
             if (args.length > 2) clusters_number = Integer.parseInt(args[2]);
@@ -59,16 +58,19 @@ public class KMeansClusteringJob extends Configured implements Tool {
 
         Path dataSource = new Path(args[0]);
         Path in = new Path(target);
+        FileSystem fs = FileSystem.get(conf);
 
-        writeVectors(conf, dataSource, in, Integer.parseInt(args[1]));
-        writeCenters(conf, center);
+        if (fs.exists(dataSource)) {
+            writeVectors(conf, dataSource, in, Integer.parseInt(args[1]));
+            writeCenters(conf, center);
+        }
 
         while (iteration < max_iterations) {
             LOG.info("========Iteration: " + iteration);
             conf = getConf();
             conf.set("num.iteration", iteration + "");
             conf.set("centroid.path", center.toString());
-            FileSystem fs = FileSystem.get(conf);
+            fs = FileSystem.get(conf);
 
             String inputPath = (iteration == 0) ? target : "/clustering/depth_" + (iteration - 1) + "/";
 
@@ -82,7 +84,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             job.setReducerClass(KMeansReducer.class);
             job.setJarByClass(KMeansMapper.class);
 
-            job.setNumReduceTasks(1);
+//            job.setNumReduceTasks(1);
 
             FileInputFormat.addInputPath(job, in);
 
@@ -183,21 +185,19 @@ public class KMeansClusteringJob extends Configured implements Tool {
                 String[] values = line.split(delimiter);
                 double[] vector = new double[5];
 
-                for (int k=0; k<5; k++) {
-                    for (int j = 0; j < 5; j++) {
-                        if (values[j+3].length()<6) continue;
-                        double value = Integer.parseInt(values[j+3].substring(4)) * Math.random();
-                        vector[j] = value;
-                    }
-
-                    Vector newVector = new Vector(vector);
-
-                    for (int candidate : candidates) {
-                        if (i == candidate) clusterCenters.add(newVector);
-                    }
-
-                    dataWriter.append(new Text(""), newVector);
+                for (int j = 0; j < 5; j++) {
+                    if (values[j+3].length()<6) continue;
+                    double value = Integer.parseInt(values[j+3].substring(3)) * Math.random();
+                    vector[j] = value;
                 }
+
+                Vector newVector = new Vector(vector);
+
+                for (int candidate : candidates) {
+                    if (i == candidate) clusterCenters.add(newVector);
+                }
+
+                dataWriter.append(new Text(""), newVector);
             }
         } catch (IOException e) {
             e.printStackTrace();
