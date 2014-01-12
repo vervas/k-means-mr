@@ -26,31 +26,48 @@ import org.apache.hadoop.util.ToolRunner;
 public class KMeansClusteringJob extends Configured implements Tool {
 
     private final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
-    private int clusters_number = 10;
-    private int max_iterations = 5;
+    private final int BLOCK_SIZE;
+    private final int CLUSTER_CENTERS;
+    private final int MAX_ITERATIONS;
 
     private List<Vector> clusterCenters = new ArrayList<Vector>();
 
+    public KMeansClusteringJob(String[] args){
+        int block_size = 33554432;
+        int cluster_centers = 10;
+        int max_iterations = 5;
+            try {
+        if (args.length > 2)         block_size = Integer.parseInt(args[2]);
+            } catch (NumberFormatException e){
+                LOG.error("Invalid block size argument. Using default: " + block_size);
+            }
+
+        try {
+            if (args.length > 3) cluster_centers = Integer.parseInt(args[3]);
+        } catch (NumberFormatException e){
+            LOG.error("Invalid clusters number argument. Using default: " + cluster_centers);
+        }
+
+        try {
+            if (args.length > 4) max_iterations = Integer.parseInt(args[4]);
+        } catch (NumberFormatException e){
+            LOG.error("Invalid max iterations argument. Using default: " + max_iterations);
+        }
+
+        BLOCK_SIZE = block_size;
+        CLUSTER_CENTERS = cluster_centers;
+        MAX_ITERATIONS = max_iterations;
+    }
+
     public static void main(String[] args) throws Exception {
-        ToolRunner.run(new Configuration(), new KMeansClusteringJob(), args);
+        ToolRunner.run(new Configuration(), new KMeansClusteringJob(args), args);
     }
 
     public int run(String[] args) throws Exception {
         int iteration = 0;
 
-        try {
-            if (args.length > 2) clusters_number = Integer.parseInt(args[2]);
-        } catch (NumberFormatException e){
-            LOG.error("Invalid clusters number argument. Using default: " + clusters_number);
-        }
-
-        try {
-            if (args.length > 3) max_iterations = Integer.parseInt(args[3]);
-        } catch (NumberFormatException e){
-            LOG.error("Invalid max iterations argument. Using default: " + max_iterations);
-        }
-
         Configuration conf = getConf();
+        conf.setInt("dfs.block.size", BLOCK_SIZE);
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
 
@@ -65,11 +82,12 @@ public class KMeansClusteringJob extends Configured implements Tool {
             writeCenters(conf, center);
         }
 
-        while (iteration < max_iterations) {
+        while (iteration < MAX_ITERATIONS) {
             LOG.info("========Iteration: " + iteration);
             conf = getConf();
             conf.set("num.iteration", iteration + "");
             conf.set("centroid.path", center.toString());
+            conf.setInt("dfs.block.size", BLOCK_SIZE);
             fs = FileSystem.get(conf);
 
             String inputPath = (iteration == 0) ? target : "/clustering/depth_" + (iteration - 1) + "/";
@@ -174,7 +192,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
                     Writer.keyClass(Text.class), Writer.valueClass(Vector.class));
 
             br = new BufferedReader(new InputStreamReader(fs.open(dataSource)));
-            int[] candidates = new int[clusters_number];
+            int[] candidates = new int[CLUSTER_CENTERS];
             for (int j = 0; j < candidates.length; j++) {
                 candidates[j] = 1 + (int) (Math.random() * dataSize);
             }
