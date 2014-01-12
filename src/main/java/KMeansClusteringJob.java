@@ -1,9 +1,3 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -12,8 +6,8 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
-import org.apache.hadoop.io.SequenceFile.Writer;
 import org.apache.hadoop.io.SequenceFile.Reader;
+import org.apache.hadoop.io.SequenceFile.Writer;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -23,34 +17,41 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
 public class KMeansClusteringJob extends Configured implements Tool {
 
     private final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
+    private final int MB = 1024 * 1024;
     private final int BLOCK_SIZE;
     private final int CLUSTER_CENTERS;
     private final int MAX_ITERATIONS;
 
     private List<Vector> clusterCenters = new ArrayList<Vector>();
 
-    public KMeansClusteringJob(String[] args){
-        int block_size = 33554432;
+    public KMeansClusteringJob(String[] args) {
+        int block_size = 32 * MB;
         int cluster_centers = 10;
         int max_iterations = 5;
-            try {
-        if (args.length > 2)         block_size = Integer.parseInt(args[2]);
-            } catch (NumberFormatException e){
-                LOG.error("Invalid block size argument. Using default: " + block_size);
-            }
+        try {
+            if (args.length > 2) block_size = Integer.parseInt(args[2]) * MB;
+        } catch (NumberFormatException e) {
+            LOG.error("Invalid block size argument. Using default: " + block_size);
+        }
 
         try {
             if (args.length > 3) cluster_centers = Integer.parseInt(args[3]);
-        } catch (NumberFormatException e){
+        } catch (NumberFormatException e) {
             LOG.error("Invalid clusters number argument. Using default: " + cluster_centers);
         }
 
         try {
             if (args.length > 4) max_iterations = Integer.parseInt(args[4]);
-        } catch (NumberFormatException e){
+        } catch (NumberFormatException e) {
             LOG.error("Invalid max iterations argument. Using default: " + max_iterations);
         }
 
@@ -67,7 +68,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
         int iteration = 0;
 
         Configuration conf = getConf();
-        conf.setInt("dfs.block.size", BLOCK_SIZE);
+        conf.setInt("dfs.blocksize", BLOCK_SIZE);
         Path center = new Path("/clustering/import/center/cen.seq");
         conf.set("centroid.path", center.toString());
 
@@ -101,8 +102,6 @@ public class KMeansClusteringJob extends Configured implements Tool {
             job.setMapperClass(KMeansMapper.class);
             job.setReducerClass(KMeansReducer.class);
             job.setJarByClass(KMeansMapper.class);
-
-//            job.setNumReduceTasks(1);
 
             FileInputFormat.addInputPath(job, in);
 
@@ -197,15 +196,15 @@ public class KMeansClusteringJob extends Configured implements Tool {
                 candidates[j] = 1 + (int) (Math.random() * dataSize);
             }
 
-            int i=0;
+            int i = 0;
             br.readLine();
             while ((line = br.readLine()) != null && (i++ < dataSize)) {
                 String[] values = line.split(delimiter);
                 double[] vector = new double[5];
 
                 for (int j = 0; j < 5; j++) {
-                    if (values[j+3].length()<6) continue;
-                    double value = Integer.parseInt(values[j+3].substring(3)) * Math.random();
+                    if (values[j + 3].length() < 6) continue;
+                    double value = Integer.parseInt(values[j + 3].substring(3)) * Math.random();
                     vector[j] = value;
                 }
 
@@ -245,7 +244,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
             SequenceFile.Writer centerWriter = SequenceFile.createWriter(conf, Writer.file(center),
                     Writer.keyClass(Text.class), Writer.valueClass(Vector.class));
 
-            int i=0;
+            int i = 0;
             for (Vector cluster : clusterCenters) {
                 centerWriter.append(new Text("cluster" + i++), cluster);
             }
