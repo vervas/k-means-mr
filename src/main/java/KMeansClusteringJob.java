@@ -10,6 +10,8 @@ import org.apache.hadoop.io.SequenceFile.Reader;
 import org.apache.hadoop.io.SequenceFile.Writer;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.TaskReport;
+import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -26,7 +28,6 @@ import java.util.List;
 public class KMeansClusteringJob extends Configured implements Tool {
 
     private final Log LOG = LogFactory.getLog(KMeansClusteringJob.class);
-    private final int MB = 1024 * 1024;
     private final int BLOCK_SIZE;
     private final int CLUSTER_CENTERS;
     private final int MAX_ITERATIONS;
@@ -34,6 +35,7 @@ public class KMeansClusteringJob extends Configured implements Tool {
     private List<Vector> clusterCenters = new ArrayList<Vector>();
 
     public KMeansClusteringJob(String[] args) {
+        int MB = 1024 * 1024;
         int block_size = 32 * MB;
         int cluster_centers = 10;
         int max_iterations = 5;
@@ -121,7 +123,17 @@ public class KMeansClusteringJob extends Configured implements Tool {
             job.waitForCompletion(true);
 
             if (job.isSuccessful()) {
+                long mapDuration = 0;
+                for (TaskReport taskReport : job.getTaskReports(TaskType.MAP)) {
+                    mapDuration += taskReport.getFinishTime() - taskReport.getStartTime();
+                }
+                long reduceDuration = 0;
+                for (TaskReport taskReport : job.getTaskReports(TaskType.REDUCE)) {
+                    reduceDuration += taskReport.getFinishTime() - taskReport.getStartTime();
+                }
                 LOG.info("========Done iter: " + iteration);
+                LOG.info("========Map Duration (ms): " + mapDuration);
+                LOG.info("========Reduce Duration (ms): " + reduceDuration);
             } else {
                 break;
             }
@@ -129,8 +141,8 @@ public class KMeansClusteringJob extends Configured implements Tool {
             iteration++;
         }
 
-        printCenters(center, conf);
-        saveResult(new Path("/clustering/depth_" + (iteration - 1) + "/part-r-00000"), conf);
+//        printCenters(center, conf);
+//        saveResult(new Path("/clustering/depth_" + (iteration - 1) + "/part-r-00000"), conf);
 
         return 0;
     }
